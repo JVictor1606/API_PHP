@@ -97,9 +97,24 @@ class CarrinhoRepository extends Repository_base implements ICarrinhoRepository
         }
     }
 
-    public function GetCarrinhoByUserId(int $userid) : Carrinho
+    public function DeleteItemCarrinho(int $id): bool
     {
-         try {
+        try {
+            $sql = "DELETE FROM carrinho_items WHERE id_CarrinhoItems = :id_CarrinhoItems";
+            $stmt = $this->_conn->prepare($sql);
+            $stmt->bindValue(':id_CarrinhoItems', $id);
+            $stmt->execute();
+
+            return true;
+        } catch (\Throwable $e) {
+            throw new Exception('Erro ao Deleter o item do carrinho no banco de dados:' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function GetCarrinhoByUserId(int $userid): Carrinho
+    {
+        try {
             $sql = "SELECT * FROM Carrinho WHERE user_id = :user_id";
             $stmt = $this->_conn->prepare($sql);
             $stmt->bindValue(':user_id', $userid);
@@ -108,15 +123,15 @@ class CarrinhoRepository extends Repository_base implements ICarrinhoRepository
             $carrinho = $stmt->fetch(PDO::FETCH_ASSOC);
             $status = Status_Carrinho::from($carrinho['status']);
 
-            return $carrinho ? new Carrinho( $carrinho['valorTotal'], $status,  $carrinho['user_id'],$carrinho['id_Carrinho']) : null;
+            return $carrinho ? new Carrinho($carrinho['valorTotal'], $status,  $carrinho['user_id'], $carrinho['id_Carrinho']) : null;
         } catch (\Throwable $e) {
             throw new Exception('Erro ao pegar o carrinho no banco de dados pelo ID do usuario:' . $e->getMessage());
         }
     }
 
-    public function GetCarrinhoById(int $id) : Carrinho
+    public function GetCarrinhoById(int $id): Carrinho
     {
-         try {
+        try {
             $sql = "SELECT * FROM Carrinho WHERE id_Carrinho = :id_Carrinho";
             $stmt = $this->_conn->prepare($sql);
             $stmt->bindValue(':id_Carrinho', $id);
@@ -124,16 +139,32 @@ class CarrinhoRepository extends Repository_base implements ICarrinhoRepository
 
             $carrinho = $stmt->fetch(PDO::FETCH_ASSOC);
             $status = Status_Carrinho::from($carrinho['status']);
-            return $carrinho ? new Carrinho( $carrinho['valorTotal'], $status,  $carrinho['user_id'], $carrinho['id_Carrinho']) : null;
+            return $carrinho ? new Carrinho($carrinho['valorTotal'], $status,  $carrinho['user_id'], $carrinho['id_Carrinho']) : null;
         } catch (\Throwable $e) {
             throw new Exception('Erro ao pegar o carrinho no banco de dados pelo ID:' . $e->getMessage());
         }
     }
 
-        public function GetItemsCarrinho(int $carrinhoId) : array
+    public function GetItemCarrinhoById(int $id): CarrinhoItems
     {
-         try {
-            $sql = "SELECT * FROM carrinho_items WHERE carrinho_id = :carrinho_id";
+        try {
+            $sql = "SELECT * FROM carrinho_items WHERE id_CarrinhoItems = :id_CarrinhoItems";
+            $stmt = $this->_conn->prepare($sql);
+            $stmt->bindValue(':id_CarrinhoItems', $id);
+            $stmt->execute();
+
+            $Itemcarrinho = $stmt->fetch(PDO::FETCH_ASSOC);
+            $status = Status_item::from($Itemcarrinho['status']);
+            return $Itemcarrinho ? new CarrinhoItems($Itemcarrinho['nome_item'], $Itemcarrinho['quantidade_comprada'],  $Itemcarrinho['valorTotal'], $Itemcarrinho['valorUnitario'],  $status, $Itemcarrinho['produto_id'], $Itemcarrinho['carrinho_id'], $Itemcarrinho['id_CarrinhoItems']) : null;
+        } catch (\Throwable $e) {
+            throw new Exception('Erro ao pegar o item do carrinho no banco de dados pelo ID:' . $e->getMessage());
+        }
+    }
+
+    public function GetItemsCarrinho(int $carrinhoId): array
+    {
+        try {
+            $sql = "SELECT * FROM carrinho_items WHERE carrinho_id = :carrinho_id order by valorTotal DESC";
             $stmt = $this->_conn->prepare($sql);
             $stmt->bindValue(':carrinho_id', $carrinhoId);
             $stmt->execute();
@@ -142,7 +173,7 @@ class CarrinhoRepository extends Repository_base implements ICarrinhoRepository
 
             return array_map(function ($Itemcarrinho) {
                 $status = Status_item::from($Itemcarrinho['status']);
-                 return new CarrinhoItems( $Itemcarrinho['nome_item'], $Itemcarrinho['quantidade_comprada'],  $Itemcarrinho['valorTotal'],$Itemcarrinho['valorUnitario'],  $status, $Itemcarrinho['produto_id'], $Itemcarrinho['carrinho_id'], $Itemcarrinho['id_CarrinhoItems']);
+                return new CarrinhoItems($Itemcarrinho['nome_item'], $Itemcarrinho['quantidade_comprada'],  $Itemcarrinho['valorTotal'], $Itemcarrinho['valorUnitario'],  $status, $Itemcarrinho['produto_id'], $Itemcarrinho['carrinho_id'], $Itemcarrinho['id_CarrinhoItems']);
             }, $results ?? []);
         } catch (\Throwable $e) {
             throw new Exception('Erro ao pegar todos os items do carrinho no banco de dados:' . $e->getMessage());

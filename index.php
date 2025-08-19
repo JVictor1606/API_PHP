@@ -198,6 +198,16 @@ switch ($method) {
                 echo $productController->DeleteProduct($id, $userTokenId);
                 break;
             }
+            elseif ($requestUri === 'api/v1/users/carrinho/item'  && $_GET['id'] && $isAuthenticated) {
+            try {
+                $id = (int)$_GET['id'];
+                $userId = $userToken['user']->id;
+                echo $CarrinhoController->DeleteProductFromCarrrinho($id,$userId);
+            } catch (\Throwable $e) {
+                http_response_code(500);
+                return json_encode(['message' => 'Erro no servidor ao deletar o item no o carrinho do usuario : ' . $e->getMessage()]);
+            }
+        }
             break;
         } catch (\Throwable $e) {
             http_response_code(500);

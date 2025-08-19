@@ -11,6 +11,8 @@ interface ICarrinhoRepository
     public function UpdateCarrinho(Carrinho $carrinho): Carrinho;
     public function DeleteCarrinho(int $id): bool;
     public function AddProductInsideCarrinho(CarrinhoItems $item): CarrinhoItems;
+    public function DeleteItemCarrinho(int $id): bool;
+    public function GetItemCarrinhoById(int $id): CarrinhoItems;
     public function GetCarrinhoByUserId(int $id) : Carrinho;
     public function GetCarrinhoById(int $id) : Carrinho;
     public function GetItemsCarrinho(int $carrinhoId) : array;

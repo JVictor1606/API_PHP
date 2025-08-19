@@ -93,7 +93,7 @@ class CarrinhoController
             $valorTotal = array_reduce($items, function ($total, CarrinhoItems $item) {
                 return $total + $item->getValorTotal();
             }, 0);
-          
+
             if ($carrinho->GetValorTotalCarrinho() != $valorTotal) {
                 $carrinho->SetValorTotal($valorTotal);
                 $this->_repository->UpdateCarrinho($carrinho);
@@ -203,5 +203,64 @@ class CarrinhoController
             http_response_code(500);
             return  json_encode(['message' => 'Erro ao buscar ao adicionar o produto no carrinho do usuario :' . $e->getMessage()]);
         }
+    }
+
+
+        /**
+     * @OA\Delete(
+     *     path="/api/v1/users/carrinho/item",
+     *     summary="Deletar Produto do carrinho",
+     *     tags={"Carrinho"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(response=200, description="Usuário deletado com sucesso"),
+     *     @OA\Response(response=404, description="Usuário não encontrado"),
+     *      @OA\Response(
+     *         response=401,
+     *         description="Não autorizado",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Não autorizado ou ID ausente")
+     *         )
+     *     )
+     * )
+     */
+    public function DeleteProductFromCarrrinho(int $id, int $userId)
+    {
+        $itemCarrinho = $this->_repository->GetItemCarrinhoById($id);
+        $product = $this->_product_repository->GetProductById($itemCarrinho->getProdutoId());
+        
+        if ($itemCarrinho === null || empty($itemCarrinho)) {
+            http_response_code(404);
+            return json_encode(['message' => 'Item não encontrado no carrinho com este id']);
+        }
+
+        $carrinho = $this->_repository->GetCarrinhoByUserId($userId);
+        if($userId !== $carrinho->GetUserId())
+        {
+            http_response_code(403);
+            echo json_encode(['message' => 'Acesso não autorizado']);
+        }
+
+        try {
+            http_response_code(200);
+            $this->_repository->DeleteItemCarrinho($id);
+
+            
+            $QuantidadeProduto = $product->getQuantidadeProduto() + $itemCarrinho->getQuantidade();
+            $product->setQuantidadeProduto($QuantidadeProduto);
+            $this->_product_repository->UpdateProduct($product);
+
+            return json_encode(['Sucess' => 'Item retirado do carrinho com sucesso']);
+
+        } catch (\Throwable $e) {
+           http_response_code(500);
+            return json_encode(['message' => 'Erro ao Deletar o item do carrinho' . $e->getMessage()]);
+        }
+
     }
 }
