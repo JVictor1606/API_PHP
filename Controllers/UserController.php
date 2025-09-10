@@ -293,7 +293,7 @@ class UserController
      *     security={{"bearerAuth":{}}},
      *  @OA\Parameter(
      *         name="id",
-     *         in="query",
+     *         in="path",
      *         required=true,
      *         @OA\Schema(type="integer")
      *     ),

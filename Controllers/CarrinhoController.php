@@ -16,6 +16,9 @@ use Models\CarrinhoItems;
 use Models\Enums\Status_Carrinho;
 use Models\Enums\Status_item;
 use PDO;
+use Services\Resources\ResourceItensCarrinho;
+use Services\Resources\ResourceProduct;
+use Services\Response;
 
 class CarrinhoController
 {
@@ -38,12 +41,6 @@ class CarrinhoController
      *     summary="Pega carrinho pelo id do usuario logado",
      *     tags={"Carrinho"},
      *     security={{"bearerAuth":{}}},
-     *  @OA\Parameter(
-     *         name="id",
-     *         in="query",
-     *         required=true,
-     *         @OA\Schema(type="integer")
-     *     ),
      *     @OA\Response(response=200, description="Carrinho selecionado com sucesso"),
      *     @OA\Response(response=404, description="Carrinho não encontrado"),
      *     @OA\Response(
@@ -61,14 +58,13 @@ class CarrinhoController
             $carrinho = $this->_repository->GetCarrinhoByUserId($userId);
 
             if (!$carrinho || $carrinho === null) {
-                http_response_code(404);
-                return json_encode(['Error' => 'Produto não encontrado com este id']);
+                (new Response())->json(['Error' => 'Produto não encontrado com este id'], Response::HTTP_NOT_FOUND);
                 exit;
             }
 
             if ($carrinho->GetUserId() !== $userId) {
-                http_response_code(404);
-                return json_encode(['Error' => 'Carrinho pertence a outro usuario']);
+               
+                (new Response())->json(['Error' => 'Carrinho pertence a outro usuario'], Response::HTTP_NOT_FOUND);
                 exit;
             }
 
@@ -99,22 +95,33 @@ class CarrinhoController
                 $this->_repository->UpdateCarrinho($carrinho);
             }
 
-            $result = array_map(function (CarrinhoItems $item) {
-                return [
-                    'id do Produto no carrinho' => $item->getId(),
-                    'Status' => $item->getStatusItem()->value,
-                    'nome' => $item->getNomeProduto(),
-                    'Valor unitario' => $item->getValorUnitario(),
-                    'Valor Total' => $item->getValorTotal(),
-                    'Quantidade' => $item->getQuantidade(),
-                ];
-            }, $items);
+            $result = ResourceItensCarrinho::collect($items);
 
-            return json_encode([
-                "Valor do carrinho" => $carrinho->GetValorTotalCarrinho(),
-                "Status" => $carrinho->GetStatusCarrinho()->value,
-                "itens" => $result
-            ]);
+
+            // $result = array_map(function (CarrinhoItems $item) {
+            //     return [
+            //         'id do Produto no carrinho' => $item->getId(),
+            //         'Status' => $item->getStatusItem()->value,
+            //         'nome' => $item->getNomeProduto(),
+            //         'Valor unitario' => $item->getValorUnitario(),
+            //         'Valor Total' => $item->getValorTotal(),
+            //         'Quantidade' => $item->getQuantidade(),
+            //     ];
+            // }, $items);
+
+            // return json_encode([
+            //     "Valor do carrinho" => $carrinho->GetValorTotalCarrinho(),
+            //     "Status" => $carrinho->GetStatusCarrinho()->value,
+            //     "itens" => $result
+            // ]);
+
+            new Response()->json(
+                [
+                    "Valor do carrinho" => $carrinho->GetValorTotalCarrinho(),
+                    "Status" => $carrinho->GetStatusCarrinho()->value,
+                    "itens" => $result
+                ]
+            );
         } catch (\Throwable $e) {
             http_response_code(500);
             return  json_encode(['message' => 'Erro ao ver o carrinho do usuario : ' . $e->getMessage()]);
@@ -206,7 +213,7 @@ class CarrinhoController
     }
 
 
-        /**
+    /**
      * @OA\Delete(
      *     path="/api/v1/users/carrinho/item",
      *     summary="Deletar Produto do carrinho",
@@ -232,16 +239,17 @@ class CarrinhoController
     public function DeleteProductFromCarrrinho(int $id, int $userId)
     {
         $itemCarrinho = $this->_repository->GetItemCarrinhoById($id);
-        $product = $this->_product_repository->GetProductById($itemCarrinho->getProdutoId());
-        
+
         if ($itemCarrinho === null || empty($itemCarrinho)) {
-            http_response_code(404);
-            return json_encode(['message' => 'Item não encontrado no carrinho com este id']);
+
+            return new Response()->json(['message' => 'Item não encontrado no carrinho com este id'], Response::HTTP_BAD_REQUEST);
         }
 
+        $product = $this->_product_repository->GetProductById($itemCarrinho->getProdutoId());
+
+
         $carrinho = $this->_repository->GetCarrinhoByUserId($userId);
-        if($userId !== $carrinho->GetUserId())
-        {
+        if ($userId !== $carrinho->GetUserId()) {
             http_response_code(403);
             echo json_encode(['message' => 'Acesso não autorizado']);
         }
@@ -250,17 +258,110 @@ class CarrinhoController
             http_response_code(200);
             $this->_repository->DeleteItemCarrinho($id);
 
-            
+
             $QuantidadeProduto = $product->getQuantidadeProduto() + $itemCarrinho->getQuantidade();
             $product->setQuantidadeProduto($QuantidadeProduto);
             $this->_product_repository->UpdateProduct($product);
 
             return json_encode(['Sucess' => 'Item retirado do carrinho com sucesso']);
-
         } catch (\Throwable $e) {
-           http_response_code(500);
+            http_response_code(500);
             return json_encode(['message' => 'Erro ao Deletar o item do carrinho' . $e->getMessage()]);
         }
+    }
 
+
+    /**
+     * @OA\Put(
+     *     path="/api/v1/users/carrinho/item",
+     *     summary="Atualiza o Produto",
+     *     tags={"Carrinho"},
+     *     security={{"bearerAuth":{}}},
+     *  @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         required=true,
+     *         @OA\Schema(
+     *          type="integer"
+     *      )
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *            required={"quantidade"},
+     *             @OA\Property(property="quantidade", type="int",  example="1")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Produto Atualizado com sucesso",
+     *     ),
+     *      @OA\Response(
+     *         response=401,
+     *         description="Não autorizado",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Não autorizado ou ID ausente")
+     *         )
+     *      )
+     * )
+     */
+    public function UpdateItemCarrinho(int $userId, int $productId, int $quantidade)
+    {
+        $itemCarrinho = $this->_repository->GetItemCarrinhoById($productId);
+        if ($itemCarrinho === null || empty($itemCarrinho)) {
+            return new Response()->json(['message' => 'Item não encontrado no carrinho com este id'], Response::HTTP_BAD_REQUEST);
+        }
+        $product = $this->_product_repository->GetProductById($itemCarrinho->getProdutoId());
+
+        $carrinho = $this->_repository->GetCarrinhoByUserId($userId);
+        if ($userId !== $carrinho->GetUserId()) {
+            return new Response()->json(['Error' => 'NÃO autorizado'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        try {
+
+            if ($itemCarrinho->getQuantidade() < 0) {
+                return new Response()->json(
+                    [
+                        'Error' => 'Quantidade que voce retirou foi mais do que tinha no carrinho'
+                    ],
+                    Response::HTTP_BAD_REQUEST
+
+                );
+            }
+
+            $quantidadeAntiga = $itemCarrinho->getQuantidade();
+            $itemCarrinho->setQuantidade($quantidade);
+            $itemUpdate = $this->_repository->UpdateItemCarrinho($itemCarrinho);
+
+
+            //Diferença entre a nova quantidade e a antiga 
+            $diferenca = $quantidadeAntiga - $quantidade;
+
+            if ($diferenca > 0) {
+                $product->setQuantidadeProduto($product->getQuantidadeProduto() - $diferenca);
+            } elseif ($diferenca < 0) {
+                $product->setQuantidadeProduto($product->getQuantidadeProduto() + abs($diferenca));
+            }
+
+            $this->_product_repository->UpdateProduct($product);
+            $result = [
+                'id do Produto no carrinho' => $product->getId(),
+                'nome' => $product->getNomeProduto(),
+                'Valor unitario' => $product->getValor(),
+                'Valor Total' => $itemCarrinho->getValorTotal(),
+                'Quantidade' => $itemCarrinho->getQuantidade(),
+            ];
+
+            return new Response()->json(
+                [
+                    'Sucess' => 'Produto atualizado com sucesso',
+                    'Item' => $result
+                ]
+            );
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            return json_encode(['message' => 'Erro ao Deletar o item do carrinho' . $e->getMessage()]);
+        }
     }
 }

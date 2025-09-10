@@ -11,6 +11,8 @@ use Models\User;
 use Models\Product;
 use Exception;
 use Models\Carrinho;
+use Services\Resources\ResourceProduct;
+use Services\Response;
 
 class ProductController
 {
@@ -254,21 +256,11 @@ class ProductController
 
         try {
 
-            $products = $this->_repository->GetAllProduct();
-            $result = array_map(function (Product $product) {
-                $user = $this->_user_repository->GetUserById($product->getUserId());
-                return [
-                    'Criado por' => $user->getName(),
-                    'id do Produto' => $product->getId(),
-                    'nome' => $product->getNomeProduto(),
-                    'descricao' => $product->getDescricao(),
-                    'Valor' => $product->getValor(),
-                    'Produtos em estoque' => $product->getQuantidadeProduto()
-                ];
-            }, $products);
+           $products = $this->_repository->GetAllProduct();
+           $productResponse = ResourceProduct::collect($products);
+           
+            (new Response()->json( ['Produtos' => $productResponse ]));
 
-            http_response_code(200);
-            return json_encode($result);
         } catch (\Throwable $e) {
             http_response_code(500);
             return json_encode(['message' => 'Erro ao buscar todos os produtos : ' . $e->getMessage()]);

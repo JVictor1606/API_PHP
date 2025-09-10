@@ -7,7 +7,10 @@
              "Models\\": "Models/",
              "Controllers\\": "Controllers/",
              "Dto\\": "Dto/",
-             "Token\\": "Token/"
+             "Services\\": "Services/",
+             "Routes\\": "Routes/",
+             "Middleware\\": "Middleware/",
+             "Core\\": "Core/"
         }
     },
     "authors": [
@@ -20,6 +23,7 @@
         "zircote/swagger-php": "^5.0@dev",
         "doctrine/annotations": "2.0.x-dev",
         "firebase/php-jwt": "dev-main",
-        "vlucas/phpdotenv": "^5.6@dev"
+        "vlucas/phpdotenv": "^5.6@dev",
+        "larapack/dd": "dev-master"
     }
 }

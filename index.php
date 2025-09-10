@@ -4,8 +4,6 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, GET, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers:Authorization, Content-Type, x-xsrf-token, x-csrtoken, X-Requested-With");
 
-
-
 require_once 'vendor/autoload.php';
 
 use Bd\Repository\ProductRepository;
@@ -18,6 +16,7 @@ use Controllers\CarrinhoController;
 use Controllers\ProductController;
 use Models\Dto\UserRequest;
 use Models\Dto\ProductRequest;
+use Services\Response;
 
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
@@ -130,7 +129,7 @@ switch ($method) {
                 echo $CarrinhoController->AddProductInCarrinho($userId, $id, $quantidade);
             } catch (\Throwable $e) {
                 http_response_code(500);
-                echo json_encode(['Error' => 'Erro no servidor ao adicionar o produto no carrinho: ' .$e->getMessage()]);
+                echo json_encode(['Error' => 'Erro no servidor ao adicionar o produto no carrinho: ' . $e->getMessage()]);
             }
             break;
         } else {
@@ -180,6 +179,24 @@ switch ($method) {
 
                 echo $productController->UpdateProduct($id, $userTokenId, $ProductRequest);
                 break;
+            } elseif ($requestUri === 'api/v1/users/carrinho/item' && isset($_GET['id'])  && $isAuthenticated) {
+                try {
+                    $id = (int)$_GET['id'];
+                    $userId =  $userToken['user']->id;
+                    $body = json_decode(file_get_contents('php://input'), true);
+
+                    if (!isset($body['quantidade'])) {
+                        http_response_code(400);
+                        echo json_encode(['message' => 'Quantidade é obrigatória']);
+                        break;
+                    }
+                    $quantidade = (int)$body['quantidade'];
+
+                    echo $CarrinhoController->UpdateItemCarrinho($userId, $id, $quantidade);
+                } catch (\Throwable $e) {
+                    http_response_code(500);
+                    return json_encode(['message' => 'Erro no servidor ao Atualizar o item no o carrinho do usuario : ' . $e->getMessage()]);
+                }
             }
         } catch (\Throwable $e) {
             http_response_code(500);
@@ -197,17 +214,16 @@ switch ($method) {
                 $userTokenId = $userToken['user']->id;
                 echo $productController->DeleteProduct($id, $userTokenId);
                 break;
+            } elseif ($requestUri === 'api/v1/users/carrinho/item'  && $_GET['id'] && $isAuthenticated) {
+                try {
+                    $id = (int)$_GET['id'];
+                    $userId = $userToken['user']->id;
+                    echo $CarrinhoController->DeleteProductFromCarrrinho($id, $userId);
+                } catch (\Throwable $e) {
+                    http_response_code(500);
+                    return json_encode(['message' => 'Erro no servidor ao deletar o item no o carrinho do usuario : ' . $e->getMessage()]);
+                }
             }
-            elseif ($requestUri === 'api/v1/users/carrinho/item'  && $_GET['id'] && $isAuthenticated) {
-            try {
-                $id = (int)$_GET['id'];
-                $userId = $userToken['user']->id;
-                echo $CarrinhoController->DeleteProductFromCarrrinho($id,$userId);
-            } catch (\Throwable $e) {
-                http_response_code(500);
-                return json_encode(['message' => 'Erro no servidor ao deletar o item no o carrinho do usuario : ' . $e->getMessage()]);
-            }
-        }
             break;
         } catch (\Throwable $e) {
             http_response_code(500);
@@ -271,29 +287,11 @@ switch ($method) {
                 http_response_code(500);
                 return json_encode(['message' => 'Erro no servidor ao buscar todos os produtos : ' . $e->getMessage()]);
             }
-        } elseif ($requestUri === 'api/v1/users/carrinho'  && $_GET['id'] && $isAuthenticated) {
+        } elseif ($requestUri === 'api/v1/users/carrinho'  && $isAuthenticated ) {
             try {
-                $userId = (int)$_GET['id'];
-
-                if ($userToken['user']->id != $userId) {
-                    http_response_code(403);
-                    echo json_encode(['message' => 'Acesso não autorizado']);
-                    exit;
-                }
-                echo $CarrinhoController->SeeCarrinho($userId);
-            } catch (\Throwable $e) {
-                http_response_code(500);
-                return json_encode(['message' => 'Erro no servidor ao buscar o carrinho do usuario : ' . $e->getMessage()]);
-            }
-        } elseif ($requestUri === 'api/v1/users/carrinho'  && $_GET['id'] && $isAuthenticated) {
-            try {
-                $userId = (int)$_GET['id'];
-
-                if ($userToken['user']->id != $userId) {
-                    http_response_code(403);
-                    echo json_encode(['message' => 'Acesso não autorizado']);
-                    exit;
-                }
+               
+                $userId = $userToken['user']->id;
+                
                 echo $CarrinhoController->SeeCarrinho($userId);
             } catch (\Throwable $e) {
                 http_response_code(500);

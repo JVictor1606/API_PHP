@@ -111,6 +111,23 @@ class CarrinhoRepository extends Repository_base implements ICarrinhoRepository
             return false;
         }
     }
+        public function UpdateItemCarrinho(CarrinhoItems $item): CarrinhoItems
+    {
+        try {
+            $sql = "UPDATE carrinho_items SET quantidade_comprada = :quantidade_comprada,valorTotal = :valorTotal, status = :status WHERE  produto_id = :produto_id";
+            $stmt = $this->_conn->prepare($sql);
+            $stmt->bindValue(':valorTotal', $item->getValorTotal());
+            $stmt->bindValue(':status', $item->getStatusItem()->value);
+            $stmt->bindValue(':quantidade_comprada', $item->getQuantidade());
+            $stmt->bindValue(':produto_id', $item->getProdutoId());
+            $stmt->execute();
+            $stmt->execute();
+
+            return $item;
+        } catch (\Throwable $e) {
+            throw new Exception('Erro ao atualizar o item do Carrinho no banco de dados:' . $e->getMessage());
+        }
+    }
 
     public function GetCarrinhoByUserId(int $userid): Carrinho
     {
@@ -145,7 +162,7 @@ class CarrinhoRepository extends Repository_base implements ICarrinhoRepository
         }
     }
 
-    public function GetItemCarrinhoById(int $id): CarrinhoItems
+    public function GetItemCarrinhoById(int $id): ?CarrinhoItems
     {
         try {
             $sql = "SELECT * FROM carrinho_items WHERE id_CarrinhoItems = :id_CarrinhoItems";
@@ -154,7 +171,10 @@ class CarrinhoRepository extends Repository_base implements ICarrinhoRepository
             $stmt->execute();
 
             $Itemcarrinho = $stmt->fetch(PDO::FETCH_ASSOC);
-            $status = Status_item::from($Itemcarrinho['status']);
+
+
+            $status = isset($Itemcarrinho['status']) ? Status_item::tryFrom($Itemcarrinho['status']) : null;
+            
             return $Itemcarrinho ? new CarrinhoItems($Itemcarrinho['nome_item'], $Itemcarrinho['quantidade_comprada'],  $Itemcarrinho['valorTotal'], $Itemcarrinho['valorUnitario'],  $status, $Itemcarrinho['produto_id'], $Itemcarrinho['carrinho_id'], $Itemcarrinho['id_CarrinhoItems']) : null;
         } catch (\Throwable $e) {
             throw new Exception('Erro ao pegar o item do carrinho no banco de dados pelo ID:' . $e->getMessage());
