@@ -1,6 +1,6 @@
-# MVC_inscricao
+# API 
 
-API REST simples em PHP (estilo MVC) para gestão de usuários, produtos e carrinho.
+API REST simples em PHP  para gestão de usuários, produtos e carrinho.
 
 ## Visão geral
 Projeto estruturado com controllers, modelos, repositórios e serviços. A aplicação expõe endpoints REST através de [index.php](index.php) e [indexx.php](indexx.php). A documentação OpenAPI pode ser gerada/visualizada via [swagger.php](swagger.php) + [swagger-ui/index.html](swagger-ui/index.html).
