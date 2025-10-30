@@ -10,6 +10,7 @@ use Controllers\ProductController;
 use Models\Dto\UserRequest;
 use Models\Dto\ProductRequest;
 use Services\Response;
+Use Core\Route;
 
 
 
@@ -33,5 +34,8 @@ $productController = new ProductController($productRepository, $userRepository);
 $AuthController = new AuthController($userRepository);
 $CarrinhoController = new CarrinhoController($carrinhoRepository, $productRepository);
 
+$route = new Route();
+
+$route->dispatch();
 
 ?>
