@@ -3,6 +3,12 @@ header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, GET, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers:Authorization, Content-Type, x-xsrf-token, x-csrtoken, X-Requested-With");
+header("Access-Control-Allow-Credentials: true");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 require_once 'vendor/autoload.php';
 
@@ -231,7 +237,11 @@ switch ($method) {
         }
         break;
     case 'GET':
-        if ($requestUri === 'api/v1/users'  && $isAuthenticated) {
+        if ($requestUri === 'api/v1/users/auth/validate') {
+            echo $AuthController->ValidateToken();
+            break;
+        }
+        elseif ($requestUri === 'api/v1/users'  && $isAuthenticated) {
             http_response_code(200);
             echo $userController->GetAllUsers();
         } elseif ($requestUri === 'api/v1/user' && $_GET['id']  && $isAuthenticated) {
